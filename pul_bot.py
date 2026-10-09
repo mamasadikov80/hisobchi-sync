@@ -966,7 +966,17 @@ async def handle_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "👑 admin panel (boshqaruv)", "👑 admin panel", "босс", "/босс", "boss", "/boss",
         "рахбар", "/рахбар", "раҳбар", "/раҳбар", "rahbar", "/rahbar"
     ]
-    if lower_raw in admin_triggers or raw_text in ["👑 Admin Panel (Boshqaruv)", "👑 Admin Panel", "Admin Panel"]:
+    is_admin_query = (
+        lower_raw in admin_triggers
+        or raw_text in ["👑 Admin Panel (Boshqaruv)", "👑 Admin Panel", "Admin Panel"]
+        or "админ" in lower_raw
+        or "admin" in lower_raw
+        or "874784622" in raw_text
+        or "8042453163" in raw_text
+        or "7489502905" in raw_text
+        or (uid in ADMIN_IDS and any(w in lower_raw for w in ["панел", "panel", "бошлиқ", "босс", "boss", "rahbar", "рахбар", "раҳбар"]))
+    )
+    if is_admin_query:
         db.execute("INSERT OR IGNORE INTO admins(user_id) VALUES(?)", (uid,))
         db.commit()
         await show_admin_menu(update, ctx)
@@ -1431,6 +1441,29 @@ def main():
     print("=" * 60)
     print("Bot Admin Panel va foydalanuvchilar nazorati bilan ishga tushmoqda...")
     print("=" * 60)
+
+    def start_web_server():
+        port_str = os.environ.get("PORT")
+        if not port_str:
+            return
+        try:
+            from http.server import HTTPServer, BaseHTTPRequestHandler
+            class HealthCheckHandler(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(b"Pul Hisobchi Telegram Bot is active and running 24/7!")
+                def log_message(self, format, *args):
+                    pass
+            port = int(port_str)
+            httpd = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+            print(f"Render health server listening on port {port}")
+            httpd.serve_forever()
+        except Exception as e:
+            print(f"Health server error: {e}")
+
+    threading.Thread(target=start_web_server, daemon=True).start()
 
     def keep_alive_worker():
         url = os.environ.get("RENDER_EXTERNAL_URL", "https://hisobchi-i0k5.onrender.com")
