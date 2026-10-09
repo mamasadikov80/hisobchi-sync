@@ -1476,36 +1476,50 @@ def main():
 
     threading.Thread(target=keep_alive_worker, daemon=True).start()
 
-    app = ApplicationBuilder().token(token).build()
-
-    # Buyruqlar
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("fon", send_wallpaper_message))
-    app.add_handler(CommandHandler("sms", send_debt_sms_prompt))
-    app.add_handler(CommandHandler("qarz_yop", qarz_yop_command))
-    app.add_handler(CommandHandler("close_debt", qarz_yop_command))
-
-    # Admin buyruqlari
-    app.add_handler(CommandHandler("admin", show_admin_menu))
-    app.add_handler(CommandHandler("boss", boss_claim_command))
-    app.add_handler(CommandHandler("rahbar", boss_claim_command))
-    app.add_handler(CommandHandler("users", show_admin_users_list))
-
-    # Tugmalar va xabarlar
-    app.add_handler(CallbackQueryHandler(handle_callback_query))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    try:
-        app.run_polling()
-    except Exception as e:
+    async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
             with open(os.path.join(BASE_DIR, "bot_log.txt"), "a", encoding="utf-8") as lf:
-                import traceback
-                lf.write(f"[{time.ctime()}] ERROR in polling: {traceback.format_exc()}\n")
+                lf.write(f"[{time.ctime()}] Handler error: {context.error}\n")
         except Exception:
             pass
+
+    while True:
+        try:
+            app = ApplicationBuilder().token(token).build()
+
+            # Buyruqlar
+            app.add_handler(CommandHandler("start", start_command))
+            app.add_handler(CommandHandler("help", help_command))
+            app.add_handler(CommandHandler("fon", send_wallpaper_message))
+            app.add_handler(CommandHandler("sms", send_debt_sms_prompt))
+            app.add_handler(CommandHandler("qarz_yop", qarz_yop_command))
+            app.add_handler(CommandHandler("close_debt", qarz_yop_command))
+
+            # Admin buyruqlari
+            app.add_handler(CommandHandler("admin", show_admin_menu))
+            app.add_handler(CommandHandler("boss", boss_claim_command))
+            app.add_handler(CommandHandler("rahbar", boss_claim_command))
+            app.add_handler(CommandHandler("users", show_admin_users_list))
+
+            # Tugmalar va xabarlar
+            app.add_handler(CallbackQueryHandler(handle_callback_query))
+            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+            app.add_error_handler(global_error_handler)
+
+            print("Bot muvaffaqiyatli ishga tushdi va xabarlarni qabul qilmoqda...")
+            app.run_polling(drop_pending_updates=True)
+            break
+        except Exception as e:
+            try:
+                with open(os.path.join(BASE_DIR, "bot_log.txt"), "a", encoding="utf-8") as lf:
+                    import traceback
+                    lf.write(f"[{time.ctime()}] Polling error (auto-restarting in 3s): {traceback.format_exc()}\n")
+            except Exception:
+                pass
+            print(f"Xatolik: {e}. 3 soniyadan keyin qayta ulanadi...")
+            time.sleep(3)
 
 
 if __name__ == "__main__":
     main()
+
