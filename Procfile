@@ -1,1 +1,1 @@
-worker: python pul_bot.py
+web: python pul_bot.py
